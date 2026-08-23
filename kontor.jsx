@@ -9,6 +9,7 @@ import {
   Plug, Map, MapPin, Lock, Ship, Anchor, ArrowRight,
   Mountain, TreePine, Hexagon, Square, SquareStack, Cable, CircuitBoard, Sofa, Watch, Wine, Car, Gem,
   Blocks, Frame, Construction, Hammer,
+  Sprout, Scroll, Shirt, CupSoda, Utensils, ShoppingBag,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ palette */
@@ -48,6 +49,12 @@ const PRODUCTS = {
   steelbeam:{id:"steelbeam",name:"Stahlträger",tier:1, Icon:Construction, color:"#9FB3C8", building:"Walzwerk",       time:12, out:4,  buildCost:950,  base:20, eq:150, demand:6,  elast:0.70, op:14, inputs:{ steel:2 } },
   bricks:  { id:"bricks",  name:"Ziegel",     tier:1, Icon:Blocks,     color:"#C56B4A", building:"Ziegelei",       time:10, out:8,  buildCost:600,  base:3,  eq:260, demand:14, elast:0.60, op:9,  inputs:{ sand:3 } },
   windows: { id:"windows", name:"Fenster",    tier:1, Icon:Frame,      color:"#A7D8E8", building:"Fensterfabrik",  time:12, out:4,  buildCost:950,  base:18, eq:150, demand:6,  elast:0.70, op:13, inputs:{ glass:2 } },
+  cotton:  { id:"cotton",  name:"Baumwolle",  tier:0, Icon:Sprout,     color:"#DCE5B0", building:"Baumwollfarm",   time:9,  out:7,  buildCost:380,  base:3,  eq:320, demand:15, elast:0.55, op:10, inputs:{} },
+  fabric:  { id:"fabric",  name:"Stoff",      tier:1, Icon:Scroll,     color:"#D9A6C2", building:"Weberei",        time:13, out:4,  buildCost:950,  base:11, eq:170, demand:7,  elast:0.65, op:13, inputs:{ cotton:4 } },
+  clothing:{ id:"clothing",name:"Kleidung",   tier:2, Icon:Shirt,      color:"#F5A9D0", building:"Textilfabrik",   time:18, out:3,  buildCost:1700, base:42, eq:95,  demand:4,  elast:0.85, op:18, inputs:{ fabric:2 } },
+  food:    { id:"food",    name:"Lebensmittel",tier:2,Icon:Utensils,   color:"#57DA8A", building:"Lebensmittelfabrik",time:16,out:4, buildCost:1600, base:34, eq:110, demand:5,  elast:0.80, op:16, inputs:{ flour:2, water:2 } },
+  beverage:{ id:"beverage",name:"Getränk",    tier:2, Icon:CupSoda,    color:"#5EEAD4", building:"Getränkefabrik", time:15, out:5,  buildCost:1500, base:30, eq:120, demand:5.5,elast:0.80, op:15, inputs:{ water:2, bottle:1 } },
+  fuel:    { id:"fuel",    name:"Kraftstoff", tier:1, Icon:Fuel,       color:"#A78BFA", building:"Raffinerie",     time:14, out:4,  buildCost:1300, base:16, eq:150, demand:7,  elast:0.70, op:16, inputs:{ oil:2 } },
 };
 const PLIST = Object.values(PRODUCTS);
 const TIER_LABEL = ["Rohstoffe", "Zwischenprodukte", "Endprodukte", "Spitzenprodukte"];
@@ -129,6 +136,17 @@ const POWER = {
 const POWER_LIST = Object.values(POWER);
 const POWER_NEED = [4, 7, 10, 14];
 
+/* retail outlets — sell consumer goods to end customers at a markup */
+const RETAIL = {
+  autohaus:      { id:"autohaus",      name:"Autohaus",       building:"Autohaus",       sells:"automobile", Icon:Car,         color:"#7FB3F2", cap:1.2, markup:1.6,  buildCost:3000, staff:3 },
+  modehaus:      { id:"modehaus",      name:"Modehaus",       building:"Modehaus",       sells:"clothing",   Icon:Shirt,       color:"#F5A9D0", cap:8,   markup:1.7,  buildCost:1600, staff:2 },
+  supermarkt:    { id:"supermarkt",    name:"Supermarkt",     building:"Supermarkt",     sells:"food",       Icon:ShoppingBag, color:"#57DA8A", cap:10,  markup:1.6,  buildCost:1800, staff:3 },
+  getraenkemarkt:{ id:"getraenkemarkt",name:"Getränkemarkt",  building:"Getränkemarkt",  sells:"beverage",   Icon:CupSoda,     color:"#5EEAD4", cap:12,  markup:1.6,  buildCost:1200, staff:2 },
+  tankstelle:    { id:"tankstelle",    name:"Tankstelle",     building:"Tankstelle",     sells:"fuel",       Icon:Fuel,        color:"#A78BFA", cap:14,  markup:1.6,  buildCost:2000, staff:2 },
+  restaurant:    { id:"restaurant",    name:"Restaurant",     building:"Restaurant",     sells:"food",       Icon:Utensils,    color:"#FB7185", cap:5,   markup:2.1,  buildCost:2200, staff:3 },
+};
+const RETAIL_LIST = Object.values(RETAIL);
+
 /* labor */
 const STAFF = {
   basic:   { key:"basic",   name:"Ungelernt",    Icon:Users,         cap:1.0, wage:1.0, color:"#9AB0C7" },
@@ -162,7 +180,9 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const timeStr = (s) => (s >= 60 ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}` : `${Math.ceil(s)}s`);
 const fl = (n) => Math.floor(n || 0);
 
-const isGen = (b) => !!b.powerId;const bDef = (b) => (isGen(b) ? POWER[b.powerId] : PRODUCTS[b.productId]);
+const isGen = (b) => !!b.powerId;
+const isRetail = (b) => !!b.retailId;
+const bDef = (b) => (isGen(b) ? POWER[b.powerId] : isRetail(b) ? RETAIL[b.retailId] : PRODUCTS[b.productId]);
 const buildingCost = (b) => bDef(b).buildCost;
 const lvl = (b) => b.level || 1;
 const effOut = (b) => PRODUCTS[b.productId].out * lvl(b);
@@ -182,7 +202,7 @@ const reqInputs = (b) => Object.fromEntries(Object.entries(PRODUCTS[b.productId]
 const hasReq = (inv, b) => Object.entries(reqInputs(b)).every(([k, v]) => (inv[k] || 0) >= v);
 const missReq = (inv, b) => Object.entries(reqInputs(b)).filter(([k, v]) => (inv[k] || 0) < v).map(([k, v]) => ({ id: k, need: v, have: inv[k] || 0 }));
 
-const staffNeed = (b) => isGen(b) ? (POWER[b.powerId].staff + (lvl(b) - 1)) : (STAFF_BASE[PRODUCTS[b.productId].tier] + (lvl(b) - 1));
+const staffNeed = (b) => isGen(b) ? (POWER[b.powerId].staff + (lvl(b) - 1)) : isRetail(b) ? (RETAIL[b.retailId].staff + (lvl(b) - 1)) : (STAFF_BASE[PRODUCTS[b.productId].tier] + (lvl(b) - 1));
 const laborDemand = (bs) => bs.reduce((s, b) => s + staffNeed(b), 0);
 const laborCapacity = (wf) => wf.basic * STAFF.basic.cap + wf.skilled * STAFF.skilled.cap + wf.master * STAFF.master.cap;
 const headcount = (wf) => wf.basic + wf.skilled + wf.master;
@@ -207,7 +227,7 @@ const MACRO_PHASES = [
   { key: "rec",    min: -2,   label: "Rezession",  color: "#FB7185" },
 ];
 const phaseOf = (boom) => MACRO_PHASES.find((p) => boom >= p.min) || MACRO_PHASES[MACRO_PHASES.length - 1];
-const loanRateOf = (leitzins) => (leitzins / 100) * 0.014;
+const loanRateOf = (leitzins) => (leitzins / 100) * 0.0003;
 const CYC_AMP = { berlin: 1.3, frankfurt: 1.25, stuttgart: 1.2, muenchen: 1.15, dortmund: 1.1, leipzig: 1.1, hannover: 1.0, luebeck: 0.95, hamburg: 0.85, bremen: 0.85, kiel: 0.8, rostock: 0.8 };
 
 /* energy */
@@ -289,6 +309,7 @@ const MILESTONES = [
   { id: "lv3",    label: "Ein Gebäude auf Stufe 3",     test: (g) => g.buildings.some((b) => lvl(b) >= 3), cash: 1500, rep: 4 },
   { id: "allEnd", label: "Alle 3 Endprodukte fertigen", test: (g) => ["bread", "tools", "bottle"].every((id) => g.buildings.some((b) => b.productId === id)), cash: 2500, rep: 6 },
   { id: "lux1",   label: "Erstes Spitzenprodukt fertigen", test: (g) => ["watch", "spirits", "automobile", "jewelry"].some((id) => g.buildings.some((b) => b.productId === id)), cash: 3000, rep: 6 },
+  { id: "retail1",label: "Erstes Handelsgeschäft eröffnen", test: (g) => g.buildings.some((b) => b.retailId), cash: 2000, rep: 5 },
   { id: "auto1",  label: "Erstes Automobil bauen",      test: (g) => g.buildings.some((b) => b.productId === "automobile"), cash: 4000, rep: 8 },
   { id: "nw15",   label: "Vermögen 15.000 €",           test: (g, nw) => nw >= 15000, cash: 2000, rep: 4 },
   { id: "ct10",   label: "10 Aufträge erfüllen",        test: (g) => g.stats.contracts >= 10, cash: 2500, rep: 8 },
@@ -356,6 +377,8 @@ function migrate(g) {
   }
   out.buildings = (g.buildings || []).map((b) => ({ level: 1, ...b, cityId: (b.cityId && CITIES[b.cityId]) ? b.cityId : HOME }));
   out.contracts = (g.contracts || []).map((c) => ({ ...c, cityId: (c.cityId && CITIES[c.cityId]) ? c.cityId : HOME }));
+  // safety: an old bug could compound loan interest to absurd levels offline — cap debt at what is legitimately borrowable
+  out.debt = Math.min(out.debt || 0, loanLimit(out));
   return out;
 }
 const addNews = (news, text, tone) => [{ id: uid("n"), text, tone, t: Date.now() }, ...news].slice(0, 10);
@@ -387,7 +410,7 @@ function tick(prev, now = Date.now()) {
   const runProduction = (vt) => {
     const eff = efficiency(workforce, buildings);
     for (const b of buildings) {
-      if (b.powerId) continue;
+      if (b.powerId || b.retailId) continue;
       let guard = 0;
       while (b.prod && vt >= b.prod.end && guard < 4000) {
         guard++;
@@ -460,6 +483,18 @@ function tick(prev, now = Date.now()) {
             cash += revenue; stats = { ...stats, earned: stats.earned + revenue };
           }
         }
+      }
+    }
+    // retail: sell consumer goods to end customers at a markup (separate channel, no wholesale flooding)
+    for (const b of buildings) {
+      if (!b.retailId) continue;
+      const rt = RETAIL[b.retailId], pid = rt.sells, inv = inventory[b.cityId];
+      const avail = inv[pid] || 0;
+      const q = Math.min(avail, (rt.cap * lvl(b)) / TICKS_PER_MIN);
+      if (q > 0) {
+        const rev = q * PRODUCTS[pid].base * macro.cpi * rt.markup;
+        inv[pid] = avail - q;
+        cash += rev; stats = { ...stats, earned: stats.earned + rev };
       }
     }
     if (debt > 0) debt = debt * (1 + loanRateOf(macro.leitzins));
@@ -579,6 +614,15 @@ const actions = {
   demolish: (g, id) => {
     const b = g.buildings.find((x) => x.id === id); if (!b) return g;
     return { ...g, cash: g.cash + Math.round(buildingCost(b) * 0.5), buildings: g.buildings.filter((x) => x.id !== id) };
+  },
+  buildRetail: (g, companyId, cityId, retailId) => {
+    const rt = RETAIL[retailId];
+    if (g.cash < rt.buildCost || !isUnlocked(g, cityId)) return g;
+    const mats = buildMats(rt.buildCost), inv = g.inventory[cityId];
+    if (!hasMats(inv, mats)) return g;
+    const ninv = { ...inv }; for (const k of CMATS) ninv[k] = (ninv[k] || 0) - (mats[k] || 0);
+    return { ...g, cash: g.cash - rt.buildCost, inventory: { ...g.inventory, [cityId]: ninv }, stats: { ...g.stats, spent: g.stats.spent + rt.buildCost },
+      buildings: [...g.buildings, { id: uid("b"), companyId, cityId, retailId, level: 1 }] };
   },
   upgrade: (g, id) => {
     const b = g.buildings.find((x) => x.id === id); if (!b || lvl(b) >= MAX_LEVEL) return g;
@@ -844,7 +888,7 @@ export default function App() {
         )}
 
         {buildFor && <BuildSheet game={game} companyId={buildFor} defaultCity={activeCity} act={act} onClose={() => setBuildFor(null)}
-          onBuild={(cid, pid) => act(actions.build, buildFor, cid, pid)} onBuildGen={(cid, pw) => act(actions.buildGen, buildFor, cid, pw)} />}
+          onBuild={(cid, pid) => act(actions.build, buildFor, cid, pid)} onBuildGen={(cid, pw) => act(actions.buildGen, buildFor, cid, pw)} onBuildRetail={(cid, rid) => act(actions.buildRetail, buildFor, cid, rid)} />}
         {founding && <FoundSheet game={game} onClose={() => setFounding(false)} onFound={(n, f) => { act(actions.found, n, f); setFounding(false); }} />}
         {energyOpen && <EnergySheet game={game} act={act} onClose={() => setEnergyOpen(false)} />}
         {offline && <OfflineSheet s={offline} onClose={() => setOffline(null)} />}
@@ -912,6 +956,7 @@ function Betrieb({ game, act, eff, openBuild, openFound, goPersonal, openEnergy 
             {bs.length === 0 ? <div className="empty">Noch keine Gebäude. Tippe „Gebäude“.</div>
               : <div className="bList">{bs.map((b) => isGen(b)
                   ? <GenCard key={b.id} b={b} game={game} act={act} es={es} now={now} />
+                  : isRetail(b) ? <RetailCard key={b.id} b={b} game={game} act={act} />
                   : <BuildingCard key={b.id} b={b} game={game} act={act} eff={eff} />)}</div>}
           </section>
         );
@@ -1013,6 +1058,46 @@ function GenCard({ b, game, act, es, now }) {
             <span className="upLeft"><ChevronsUp size={14} /> Ausbauen → Lv.{L + 1} ({pw.cap * (L + 1)} kW)</span>
             <span className="upRight" style={{ color: game.cash < upCost ? C.faint : C.gold }}>{money(upCost)}</span>
           </button>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ RetailCard */
+function RetailCard({ b, game, act }) {
+  const rt = RETAIL[b.retailId], L = lvl(b), p = PRODUCTS[rt.sells];
+  const inv = game.inventory[b.cityId] || {};
+  const stock = Math.floor(inv[rt.sells] || 0);
+  const cpi = cpiOf(game), capMin = rt.cap * L;
+  const retailPrice = p.base * cpi * rt.markup, potential = capMin * retailPrice;
+  const supplied = stock > 0;
+  const upCost = upgradeCost(b), atMax = L >= MAX_LEVEL;
+  const uMats = buildMats(upCost), okMats = hasMats(inv, uMats);
+  let sc = 0; for (const k of CMATS) { const s = (uMats[k] || 0) - (inv[k] || 0); if (s > 0) sc += s * (game.market[b.cityId][k]?.price || 0); }
+  return (
+    <div className="bCard">
+      <div className="bTop">
+        <div className="bIcon" style={{ background: rt.color + "22", borderColor: rt.color + "55" }}><rt.Icon size={18} color={rt.color} /></div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="bName">{rt.building} <span className="lvChip">Lv.{L}</span> <CityPin cid={b.cityId} /></div>
+          <div className="bMakes" style={{ color: supplied ? C.green : C.rose }}>{supplied ? `verkauft ${p.name} · bis ${capMin % 1 ? capMin.toFixed(1) : capMin}/min` : `kein ${p.name} vorrätig`}</div>
+        </div>
+        <button className="iconBtn" onClick={() => { if (window.confirm(`${rt.building} abreißen?`)) act(actions.demolish, b.id); }}><Trash2 size={15} /></button>
+      </div>
+      <div className="retailRow">
+        <span><p.Icon size={12} color={p.color} /> {p.name} <b style={{ color: C.faint }}>({stock})</b></span>
+        <span style={{ color: C.gold }}>{price(retailPrice)}/Stk · bis {money(potential)}/min</span>
+      </div>
+      {atMax ? <div className="upBar max"><ChevronsUp size={13} /> Maximale Stufe erreicht</div>
+        : <>
+            <button className="upBar" disabled={game.cash < upCost || !okMats} onClick={() => act(actions.upgrade, b.id)}>
+              <span className="upLeft"><ChevronsUp size={14} /> Ausbauen → Lv.{L + 1} ({rt.cap * (L + 1)}/min)</span>
+              <span className="upRight" style={{ color: (game.cash < upCost || !okMats) ? C.faint : C.gold }}>{money(upCost)}</span>
+            </button>
+            <div className="matRow" style={{ marginTop: 6 }}>
+              {CMATS.map((k) => { const mp = PRODUCTS[k], need = uMats[k] || 0, h = Math.floor(inv[k] || 0), ok = h >= need; return <span key={k} className="matChip" style={{ borderColor: ok ? C.line : C.rose + "66", color: ok ? C.muted : C.rose }}><mp.Icon size={11} color={mp.color} /> {need}{!ok && <b style={{ color: C.rose }}> /{h}</b>}</span>; })}
+              {!okMats && <button className="matBuyMini" disabled={game.cash < sc} onClick={() => act(actions.buyMats, b.cityId, uMats)}><ShoppingCart size={11} /> ~{money(sc)}</button>}
+            </div>
+          </>}
     </div>
   );
 }
@@ -1490,7 +1575,7 @@ function OfflineSheet({ s, onClose }) {
 }
 
 /* ------------------------------------------------------------------ sheets */
-function BuildSheet({ game, companyId, defaultCity, act, onClose, onBuild, onBuildGen }) {
+function BuildSheet({ game, companyId, defaultCity, act, onClose, onBuild, onBuildGen, onBuildRetail }) {
   const [cid, setCid] = useState(defaultCity);
   const cities = unlockedList(game);
   const inv = game.inventory[cid] || {};
@@ -1547,6 +1632,11 @@ function BuildSheet({ game, companyId, defaultCity, act, onClose, onBuild, onBui
           {POWER_LIST.map((pw) => (
             <Row key={pw.id} def={pw} onBuildIt={() => onBuildGen(cid, pw.id)}
               makes={pw.kind === "solar" ? `${pw.cap} kW · nur bei Tag` : pw.kind === "wind" ? `${pw.cap} kW · windabhängig` : pw.kind === "gas" ? `${pw.cap} kW · verbrennt Rohöl` : `${pw.cap} kW · ${pw.store} kWh Speicher`} />
+          ))}
+          <div className="mGroupLabel">Handel</div>
+          {RETAIL_LIST.map((rt) => (
+            <Row key={rt.id} def={rt} onBuildIt={() => onBuildRetail(cid, rt.id)}
+              makes={`verkauft ${PRODUCTS[rt.sells].name} an Endkunden · bis ${rt.cap}/min · +${Math.round((rt.markup - 1) * 100)}% Marge`} />
           ))}
           <div className="energyHint">Strom & Personal wirken stadtübergreifend. Rohstoffe, Zwischenprodukte und Baustoffe müssen in derselben Stadt liegen wie der Betrieb.</div>
         </div>
@@ -1637,6 +1727,9 @@ const CSS = `
 .bToggles{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
 .autoBtn.sell.on{color:${C.gold};border-color:${C.gold}66;background:${C.gold}14}
 .sellNote{display:flex;align-items:center;gap:5px;font-size:10.5px;color:${C.gold};margin-top:8px;opacity:.9}
+.retailRow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:9px;font-size:11px;color:${C.muted}}
+.retailRow span{display:inline-flex;align-items:center;gap:4px}
+.retailRow b{font-family:'JetBrains Mono',monospace}
 .genBar{height:8px;background:${C.bg};border-radius:5px;overflow:hidden;border:1px solid ${C.line};margin-top:10px}
 .genFill{height:100%;border-radius:5px;transition:width .5s ease}
 .inputs{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
