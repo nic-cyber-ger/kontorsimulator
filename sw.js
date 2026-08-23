@@ -1,5 +1,5 @@
 /* KONTOR service worker — offline app shell */
-const CACHE = "kontor-v1";
+const CACHE = "kontor-v2";
 const ASSETS = [
   "./",
   "./index.html",
