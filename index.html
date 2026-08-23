@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
+  <title>KONTOR — Handelsnetz Deutschland</title>
+  <meta name="description" content="KONTOR — ein Wirtschafts- und Handelssimulator: Produktionsketten, 12 deutsche Städte, Konjunktur und Offline-Fortschritt." />
+  <meta name="theme-color" content="#0B1420" />
+  <link rel="manifest" href="manifest.webmanifest" />
+
+  <!-- iOS / iPadOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="KONTOR" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="64x64" href="icon-64.png" />
+
+  <style>
+    html, body { margin: 0; padding: 0; background: #0B1420; height: 100%; overscroll-behavior: none; }
+    body { font-family: Inter, system-ui, sans-serif; }
+    #root { min-height: 100dvh; }
+    /* center the app column and fill the navy backdrop on wide screens */
+    #root > div { min-height: 100dvh; }
+    .boot { min-height: 100dvh; display: flex; align-items: center; justify-content: center; color: #8DA2BC; font-family: Inter, system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"><div class="boot">KONTOR lädt …</div></div>
+  <script src="app.js"></script>
+</body>
+</html>
